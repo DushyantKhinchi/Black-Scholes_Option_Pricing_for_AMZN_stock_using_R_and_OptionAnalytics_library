@@ -1,0 +1,344 @@
+---
+title: "Fin516 Project"
+author: "Dushyant Singh Khinchi"
+date: "2/21/2020"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.
+
+(a) The 1 SD of a 44 day price move is $535.6
+
+
+(b) 1 SD price range is from $1524.4 to $2595.6
+
+```{r}
+
+
+setwd("D:/FIN 516/Project")
+
+
+## Black-Scholes model parameters
+## s0  - current stock price
+## k   - strike price
+## sig - pricing volatility
+## t   - time, in years
+## q   - dividend yield if any, default is no dividend yield
+## typ - typ of option: 'c' for call and 'p' for put
+
+source('OptionAnalytics.r')
+s0 <- 2060
+k <- seq(1980,2140,by=20)
+sig <- 0.26
+r <- 0.016
+t44 <- 44/365
+c1 <- round(BS(s0,k,sig,r,t44),2)
+p1 <- round(BS(s0,k,sig,r,t44,typ='p'),2) 
+## create a data.frame of strikes with call and put prices
+opt1 <- data.frame(strike=k,calls=c1,puts=p1)
+
+#option chain
+opt1 
+```
+
+
+```{r}
+
+Call <- function(s,k){
+  return(ifelse(s-k>0,s-k,0))}
+
+Put <- function(s,k){
+  return(ifelse(k-s>0,k-s,0))}
+
+t16 <- 16/365
+t30 <- 30/365
+```
+
+
+
+
+# 2. Straddle
+
+```{r}
+
+#Straddle
+
+#Cost
+cost0 <- -c1[k==2060]-p1[k==2060]
+cost0
+```
+
+
+
+(a) Option premium: -$148.21
+
+
+It's a credit
+```{r}
+
+s <- seq(1900,2220,by=10)
+
+Straddle_val <- function(s,k,sig,r,t){ 
+  return( -BS(s,k,sig,r,t,typ='c') - BS(s,k,sig,r,t,typ='p'))
+  }
+
+Straddle_delta <- function(s,k,sig,r,t){ 
+  return(-BSdelta(s,k,sig,r,t,typ='c') -BSdelta(s,k,sig,r,t,typ='p')) } 
+
+### 30 DTE
+pl30 <- round(Straddle_val(s,2060,sig,r,t30) - cost0*exp((t44-t30)*r),2)
+
+delta30 <- round(Straddle_delta(s,2060,sig,r,t30),4)
+
+
+### 16 DTE
+pl16 <- round(Straddle_val(s,2060,sig,r,t16) - cost0*exp((t44-t16)*r),2)
+
+delta16 <- round(Straddle_delta(s,2060,sig,r,t16),4)
+
+
+### 0 DTE
+pl0 <- round(-Call(s,2060)-Put(s,2060) - cost0*exp(t44*r), 3)
+
+
+sig1 <- .16
+pl30_16 <- round(Straddle_val(s,2060,sig1,r,t30) - cost0*exp((t44-t30)*r),2)
+
+sig2 <- .36
+pl30_36 <- round(Straddle_val(s,2060,sig2,r,t30) - cost0*exp((t44-t30)*r),2) 
+
+t10<-10/365
+pl10 <- round(Straddle_val(s,2060,sig,r,t10) - cost0*exp((t44-t10)*r),2)
+
+```
+
+```{r}
+data.frame(s,pl30,pl16,pl0,delta30,delta16,pl30_16,pl30_36,pl10)
+
+```
+
+(e) With 10 DTE for the stock price range from $1900 to $2060 profit increases with the increase in stock price and attains a maximum of $77.71 and for the stock price range from $2060 to $2220 profit increases with the decrease in stock price.
+
+
+(f)Assuming zero commissions, Max Profit = Net Premium Received
+
+Max Profit per option contract = 100*148.21 = $14821 
+
+
+(g)It is preferable to place the trade in a low volatility environment because as it can be seen that lower value of sigma gives higher profits
+for DTE30
+
+
+
+
+# 3. Ironfly
+
+```{r}
+
+#Ironfly
+
+#Cost
+cost_IF<-p1[k==2020]-c1[k==2060]-p1[k==2060]+c1[k==2100]
+cost_IF
+
+```
+
+
+
+(a) Option premiumt: -$36.51
+
+
+It's a Credit
+
+
+```{r}
+
+s <- seq(1940,2180,by=10)
+Ironfly_val <- function(s,k,k1,k2,sig,r,t){ 
+  return(BS(s,k1,sig,r,t,typ='p') -BS(s,k,sig,r,t,typ='c') - BS(s,k,sig,r,t,typ='p') + BS(s,k2,sig,r,t,typ='c'))
+}
+
+
+Ironfly_delta <- function(s,k,k1,k2,sig,r,t){ 
+  return(BSdelta(s,k1,sig,r,t,typ='p')-BSdelta(s,k,sig,r,t,typ='c') -BSdelta(s,k,sig,r,t,typ='p')+BSdelta(s,k2,sig,r,t,typ='c')) } 
+
+
+### 30 DTE
+pl30 <- round(Ironfly_val(s,2060,2020,2100,sig,r,t30) - cost_IF*exp((t44-t30)*r),2)
+
+delta30 <- round(Ironfly_delta(s,2060,2020,2100,sig,r,t30),4)
+
+
+### 16 DTE
+pl16 <- round(Ironfly_val(s,2060,2020,2100,sig,r,t16) - cost_IF*exp((t44-t16)*r),2)
+
+delta16 <- round(Ironfly_delta(s,2060,2020,2100,sig,r,t16),4)
+
+
+
+### 0 DTE
+pl0 <- round(Put(s,2020)-Call(s,2060)-Put(s,2060)+Call(s,2100) - cost_IF*exp(t44*r),2)
+
+
+
+pl30_16 <- round(Ironfly_val(s,2060,2020,2100,0.16,r,t30) - cost_IF*exp((t44-t30)*r),2)
+
+
+
+pl30_36 <- round(Ironfly_val(s,2060,2020,2100,0.36,r,t30) - cost_IF*exp((t44-t30)*r),2)
+
+
+```
+
+```{r}
+
+
+data.frame(s,pl30,pl16,pl0,delta30,delta16,pl30_16,pl30_36)
+
+
+```
+
+(e) Assuming zero commissions, Max profit per option contract = 100*36.51 = $3651
+
+ Max loss per option contract = (2060-2020-36.51)*100 = $349
+ 
+ 
+ 
+(f)It is preferable to place the trade in a low volatility environment
+
+
+
+# 4. Strangle
+
+```{r}
+#Strangle
+
+cost_st<- p1[k==2020]+c1[k==2100]
+cost_st
+
+```
+
+
+(a) Option premium: 111.7
+
+It's a debit
+
+```{r}
+
+
+s <- seq(1900,2220,by=10)
+Strangle_val <- function(s,k1,k2,sig,r,t){ 
+  return(BS(s,k1,sig,r,t,typ='p') + BS(s,k2,sig,r,t,typ='c'))
+}
+
+
+Strangle_delta <- function(s,k1,k2,sig,r,t){ 
+  return(BSdelta(s,k1,sig,r,t,typ='p')+BSdelta(s,k2,sig,r,t,typ='c')) } 
+
+
+
+
+### 30 DTE
+pl30 <- round(Strangle_val(s,2020,2100,sig,r,t30) - cost_st*exp((t44-t30)*r),2)
+delta30 <- round(Strangle_delta(s,2020,2100,sig,r,t30),4)
+
+
+
+### 16 DTE
+pl16 <- round(Strangle_val(s,2020,2100,sig,r,t16) - cost_st*exp((t44-t16)*r),2)
+delta16 <- round(Strangle_delta(s,2020,2100,sig,r,t16),4)
+
+
+### 0 DTE
+pl0 <- round(Put(s,2020)+Call(s,2100) - cost_st*exp(t44*r),2)
+
+pl30_16 <- round(Strangle_val(s,2020,2100,0.16,r,t30) - cost_st*exp((t44-t30)*r),2)
+
+pl30_36 <- round(Strangle_val(s,2020,2100,0.36,r,t30) - cost_st*exp((t44-t30)*r),2)
+
+```
+
+
+```{r}
+
+data.frame(s,pl30,pl16,pl0,delta30,delta16,pl30_16,pl30_36)
+```
+
+(e)Max profit = Unlimited
+
+Assuming zero commissions, Max loss per option contract = 100*111.7 = $11170 
+
+(f) It is preferable to place the trade in a High volatility environment because as it can be seen that higher value of sigma gives higher profits
+for DTE30.
+
+
+
+# 5. Ironcondor
+
+```{r}
+
+#Ironcondor
+
+#Cost
+cost_IC<- -p1[k==1980]+p1[k==2020]+c1[k==2100]-c1[k==2140]
+cost_IC
+
+```
+
+(a) Option premium: $29.83 
+
+It's a Debit
+```{r}
+
+s <- seq(1900,2220,by=10)
+Ironcondor_val <- function(s,k1,k2,k3,k4,sig,r,t){ 
+  return(-BS(s,k1,sig,r,t,typ='p') +BS(s,k2,sig,r,t,typ='c') + BS(s,k3,sig,r,t,typ='p') - BS(s,k4,sig,r,t,typ='c'))
+}
+
+
+Ironcondor_delta <- function(s,k1,k2,k3,k4,sig,r,t){ 
+  return(-BSdelta(s,k1,sig,r,t,typ='p')+BSdelta(s,k2,sig,r,t,typ='c') +BSdelta(s,k3,sig,r,t,typ='p')-BSdelta(s,k4,sig,r,t,typ='c')) } 
+
+
+### 30 DTE
+pl30 <- round(Ironcondor_val(s,1980,2020,2100,2140,sig,r,t30) - cost_IC*exp((t44-t30)*r),2)
+
+
+
+### 16 DTE
+pl16 <- round(Ironcondor_val(s,1980,2020,2100,2140,sig,r,t16) - cost_IC*exp((t44-t16)*r),2)
+
+### 0 DTE
+pl0 <- round(-Put(s,1980)+Call(s,2020)+Put(s,2100)-Call(s,2140) - cost_IC*exp(t44*r),3)
+
+
+delta30 <- round(Ironcondor_delta(s,1980,2020,2100,2140,sig,r,t30),4)
+
+delta16 <- round(Ironcondor_delta(s,1980,2020,2100,2140,sig,r,t16),4)
+
+pl30_16 <- round(Ironcondor_val(s,1980,2020,2100,2140,0.16,r,t30) - cost_IC*exp((t44-t30)*r),2)
+
+pl30_36 <- round(Ironcondor_val(s,1980,2020,2100,2140,0.36,r,t30) - cost_IC*exp((t44-t30)*r),2)
+
+
+```
+
+```{r}
+
+data.frame(s,pl30,pl16,pl0,delta30,delta16,pl30_16,pl30_36)
+
+```
+
+(e) Max profit per option contract = (2020-1980-29.83)*100 = $1017
+
+Assuming zero commissions, Max loss per option contract = 100*29.83 = $2983
+
+
+(f) It is preferable to place the trade in a High volatility environment
